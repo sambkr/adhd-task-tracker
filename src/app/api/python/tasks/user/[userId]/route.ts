@@ -37,7 +37,7 @@ export async function GET(
       dueDate: task.due_date,
       category: task.category || 'general',
       status: task.status || 'pending',
-      prepSteps: (task.prep_steps || []).map((step: any) => ({
+      prepSteps: (task.prep_steps || []).map((step: { title: string; offset_minutes: number; completed: boolean }) => ({
         title: step.title,
         offsetMinutes: step.offset_minutes,
         completed: step.completed

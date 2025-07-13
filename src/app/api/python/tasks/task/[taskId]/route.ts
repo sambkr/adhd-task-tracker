@@ -41,7 +41,7 @@ export async function PUT(
       }
 
       // Insert updated prep steps
-      const prepStepsData = prepSteps.map((step: any) => ({
+      const prepStepsData = prepSteps.map((step: { title: string; offsetMinutes: number; completed: boolean }) => ({
         task_id: taskId,
         title: step.title,
         offset_minutes: step.offsetMinutes,
