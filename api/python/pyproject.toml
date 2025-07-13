@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "adhd-task-tracker-api"
+version = "0.1.0"
+description = "ADHD Task Tracker Python API"
+authors = ["Your Name <your.email@example.com>"]
+packages = [{include = "adhd_task_tracker_api"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.104.1"
+supabase = "^2.3.0"
+google-generativeai = "^0.3.2"
+python-multipart = "^0.0.6"
+pydantic = "^2.5.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

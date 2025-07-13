@@ -1,103 +1,194 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import type { Task, UserStats, CreateTaskRequest, TaskStatus } from "@/types";
+import { apiClient } from "@/lib/api";
+import { TaskForm } from "@/components/TaskForm";
+import { TaskList } from "@/components/TaskList";
+import { UserStats as UserStatsComponent } from "@/components/UserStats";
+
+type View = 'tasks' | 'stats';
+
+// For MVP, we'll use a mock user ID. In production, this would come from authentication
+const MOCK_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+export default function App() {
+  const [currentView, setCurrentView] = useState<View>('tasks');
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [userStats, setUserStats] = useState<UserStats>({
+    streakCount: 0,
+    completionRate: 0,
+    categoryStats: {}
+  });
+  const [loading, setLoading] = useState({
+    tasks: false,
+    stats: false,
+    createTask: false
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const loadTasks = async () => {
+    try {
+      setLoading(prev => ({ ...prev, tasks: true }));
+      setError(null);
+      const response = await apiClient.getTasks(MOCK_USER_ID);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      setTasks(response.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tasks');
+      console.error('Error loading tasks:', err);
+    } finally {
+      setLoading(prev => ({ ...prev, tasks: false }));
+    }
+  };
+
+  const loadUserStats = async () => {
+    try {
+      setLoading(prev => ({ ...prev, stats: true }));
+      const response = await apiClient.getUserStats(MOCK_USER_ID);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      setUserStats(response.data || { streakCount: 0, completionRate: 0, categoryStats: {} });
+    } catch (err) {
+      console.error('Error loading user stats:', err);
+    } finally {
+      setLoading(prev => ({ ...prev, stats: false }));
+    }
+  };
+
+  useEffect(() => {
+    loadTasks();
+    loadUserStats();
+  }, []);
+
+  const handleCreateTask = async (taskData: CreateTaskRequest) => {
+    try {
+      setLoading(prev => ({ ...prev, createTask: true }));
+      setError(null);
+      const response = await apiClient.createTask({
+        ...taskData,
+        user_id: MOCK_USER_ID
+      });
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      await loadTasks();
+      await loadUserStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create task');
+      console.error('Error creating task:', err);
+    } finally {
+      setLoading(prev => ({ ...prev, createTask: false }));
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, status: TaskStatus) => {
+    try {
+      const response = await apiClient.updateTask(taskId, { status });
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      await loadTasks();
+      await loadUserStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update task');
+      console.error('Error updating task:', err);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      const response = await apiClient.deleteTask(taskId);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      await loadTasks();
+      await loadUserStats();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete task');
+      console.error('Error deleting task:', err);
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-gray-900">
+              ADHD Task Tracker
+            </h1>
+            
+            <nav className="flex gap-2">
+              <button
+                onClick={() => setCurrentView('tasks')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  currentView === 'tasks'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                Tasks
+              </button>
+              <button
+                onClick={() => setCurrentView('stats')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  currentView === 'stats'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                Progress
+              </button>
+            </nav>
+          </div>
         </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-6">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <span className="text-red-800">{error}</span>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {currentView === 'tasks' && (
+          <div className="space-y-6">
+            <TaskForm
+              onSubmit={handleCreateTask}
+              loading={loading.createTask}
+            />
+            
+            <TaskList
+              tasks={tasks}
+              onUpdateStatus={handleUpdateTaskStatus}
+              onDelete={handleDeleteTask}
+              loading={loading.tasks}
+            />
+          </div>
+        )}
+
+        {currentView === 'stats' && (
+          <UserStatsComponent
+            stats={userStats}
+            loading={loading.stats}
+          />
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
