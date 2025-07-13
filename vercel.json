@@ -1,10 +1,12 @@
 {
   "version": 2,
   "builds": [
-    { "src": "next.config.js",   "use": "@vercel/next" },
+    { "src": "next.config.js",     "use": "@vercel/next" },
     { "src": "api/python/index.py", "use": "@vercel/python" }
   ],
   "routes": [
-    { "src": "/api/python/(.*)", "dest": "/api/python/index.py" }
+    { "src": "/api/python/(.*)",  "dest": "/api/python/index.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)",             "dest": "/$1" }
   ]
 }
