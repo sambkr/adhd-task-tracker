@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "package.json",        "use": "@vercel/static-build", "config": { "distDir": ".next" } },
+    { "src": "next.config.js",      "use": "@vercel/next" },
+    { "src": "api/python/index.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    {
+      "src": "/api/python/(.*)",
+      "dest": "/api/python/index.py?path=$1"
+    },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
