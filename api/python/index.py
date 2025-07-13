@@ -16,7 +16,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Allow Next.js front-end & Vercel previews
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "https://*.vercel.app"],
@@ -76,6 +75,7 @@ class CreateTaskRequest(BaseModel):
     user_id: str
 
 class UpdateTaskRequest(BaseModel):
+    id: str
     status: Optional[str] = None
     prep_steps: Optional[List[PrepStep]] = None
 
@@ -95,7 +95,6 @@ class TaskResponse(BaseModel):
 
 def generate_prep_steps(title: str, due_date: str, category: str) -> List[PrepStep]:
     if not genai_model:
-        # fallback defaults
         return [
             PrepStep(title="Gather materials needed", offset_minutes=-60),
             PrepStep(title="Set up workspace",       offset_minutes=-30),
@@ -104,24 +103,22 @@ def generate_prep_steps(title: str, due_date: str, category: str) -> List[PrepSt
 
     prompt = (
         f"You are an ADHD productivity coach. Task:\n"
-        f"  Title: {title}\n"
-        f"  Due:   {due_date}\n"
+        f"  Title:    {title}\n"
+        f"  Due:      {due_date}\n"
         f"  Category: {category}\n\n"
         "Generate 2-3 prep steps as a JSON array:\n"
         '[{"title":"Step","offset_minutes":-60}, ...]\n'
     )
-
     try:
         resp = genai_model.generate_content(prompt)
-        text = resp.text.strip()
-        data = json.loads(text)
+        data = json.loads(resp.text.strip())
         return [PrepStep(**step) for step in data]
     except Exception as e:
         print(f"AI generation failed: {e}")
         return [
             PrepStep(title="Gather materials needed",          offset_minutes=-60),
-            PrepStep(title="Set up workspace & environment",    offset_minutes=-30),
-            PrepStep(title="Final check & mental prep",         offset_minutes=-15),
+            PrepStep(title="Set up workspace & environment",   offset_minutes=-30),
+            PrepStep(title="Final check & mental prep",        offset_minutes=-15),
         ]
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
@@ -145,25 +142,25 @@ async def create_task(req: CreateTaskRequest):
 
     # insert task
     task_data = {
-        "user_id":   req.user_id,
-        "title":     req.title,
+        "user_id":    req.user_id,
+        "title":      req.title,
         "description": req.description,
-        "due_date":  req.due_date,
-        "category":  req.category,
-        "status":    "pending",
+        "due_date":   req.due_date,
+        "category":   req.category,
+        "status":     "pending",
     }
-    result = supabase_client.table("tasks").insert(task_data).execute()
-    if not result.data:
+    res = supabase_client.table("tasks").insert(task_data).execute()
+    if not res.data:
         raise HTTPException(500, "Failed to create task")
-    task = result.data[0]
+    task = res.data[0]
 
     # insert prep steps
     records = [
         {
-            "task_id":       task["id"],
-            "title":         s.title,
+            "task_id":        task["id"],
+            "title":          s.title,
             "offset_minutes": s.offset_minutes,
-            "completed":     s.completed,
+            "completed":      s.completed,
         }
         for s in steps
     ]
@@ -183,7 +180,7 @@ async def create_task(req: CreateTaskRequest):
     )
 
 
-@app.get("/tasks/{user_id}")
+@app.get("/tasks/user/{user_id}")
 async def get_tasks(user_id: str):
     if not supabase_client:
         raise HTTPException(500, "Database not available")
@@ -205,9 +202,7 @@ async def get_tasks(user_id: str):
             due_date= t["due_date"],
             category= t["category"],
             status= t["status"],
-            prep_steps=[
-                PrepStep(**step) for step in t.get("prep_steps", [])
-            ],
+            prep_steps=[ PrepStep(**step) for step in t.get("prep_steps", []) ],
             created_at= t["created_at"],
             updated_at= t.get("updated_at"),
         )
@@ -215,7 +210,7 @@ async def get_tasks(user_id: str):
     ]}
 
 
-@app.put("/tasks/{task_id}")
+@app.put("/tasks/task/{task_id}")
 async def update_task(task_id: str, req: UpdateTaskRequest):
     if not supabase_client:
         raise HTTPException(500, "Database not available")
@@ -237,7 +232,7 @@ async def update_task(task_id: str, req: UpdateTaskRequest):
     return {"success": True}
 
 
-@app.delete("/tasks/{task_id}")
+@app.delete("/tasks/task/{task_id}")
 async def delete_task(task_id: str):
     if not supabase_client:
         raise HTTPException(500, "Database not available")
@@ -266,7 +261,6 @@ async def get_user_stats(user_id: str):
         if t["status"] == "completed":
             stats[cat]["completed"] += 1
 
-    # streak = consecutive completed from most recent
     streak = 0
     for t in reversed(tasks):
         if t["status"] == "completed":
@@ -275,7 +269,7 @@ async def get_user_stats(user_id: str):
             break
 
     return {
-        "streak_count":   streak,
+        "streak_count":    streak,
         "completion_rate": round(rate, 1),
         "category_stats":  stats,
     }
