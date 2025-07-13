@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import type { Task } from '@/types'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
-    const { userId } = await params;
+    const { userId } = await params
 
     // Get tasks with prep steps
     const { data: tasks, error } = await supabase
@@ -21,14 +17,14 @@ export async function GET(
         prep_steps (*)
       `)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
 
     if (error) {
-      throw new Error(`Failed to fetch tasks: ${error.message}`);
+      throw new Error(`Failed to fetch tasks: ${error.message}`)
     }
 
     // Format response to match expected interface
-    const formattedTasks = (tasks || []).map(task => ({
+    const formattedTasks: Task[] = (tasks || []).map(task => ({
       id: task.id,
       userId: task.user_id,
       title: task.title,
@@ -43,15 +39,15 @@ export async function GET(
       })),
       createdAt: task.created_at,
       updatedAt: task.updated_at
-    }));
+    }))
 
-    return NextResponse.json({ data: formattedTasks });
+    return NextResponse.json({ data: formattedTasks })
 
   } catch (error) {
-    console.error('Error fetching tasks:', error);
+    console.error('Error fetching tasks:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
-    );
+    )
   }
 }

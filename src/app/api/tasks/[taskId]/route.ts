@@ -1,29 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
+import type { UpdateTaskRequest } from '@/types'
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    const { taskId } = await params;
-    const body = await request.json();
-    const { status, prepSteps } = body;
+    const { taskId } = await params
+    const body = await request.json()
+    const { status, prepSteps } = body as Omit<UpdateTaskRequest, 'id'>
 
     // Update task status if provided
     if (status) {
       const { error: updateError } = await supabase
         .from('tasks')
         .update({ status })
-        .eq('id', taskId);
+        .eq('id', taskId)
 
       if (updateError) {
-        throw new Error(`Failed to update task: ${updateError.message}`);
+        throw new Error(`Failed to update task: ${updateError.message}`)
       }
     }
 
@@ -33,37 +29,37 @@ export async function PUT(
       const { error: deleteError } = await supabase
         .from('prep_steps')
         .delete()
-        .eq('task_id', taskId);
+        .eq('task_id', taskId)
 
       if (deleteError) {
-        console.error('Failed to delete prep steps:', deleteError);
+        console.error('Failed to delete prep steps:', deleteError)
       }
 
       // Insert updated prep steps
-      const prepStepsData = prepSteps.map((step: { title: string; offsetMinutes: number; completed: boolean }) => ({
+      const prepStepsData = prepSteps.map(step => ({
         task_id: taskId,
         title: step.title,
         offset_minutes: step.offsetMinutes,
         completed: step.completed
-      }));
+      }))
 
       const { error: insertError } = await supabase
         .from('prep_steps')
-        .insert(prepStepsData);
+        .insert(prepStepsData)
 
       if (insertError) {
-        console.error('Failed to insert prep steps:', insertError);
+        console.error('Failed to insert prep steps:', insertError)
       }
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Error updating task:', error);
+    console.error('Error updating task:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
-    );
+    )
   }
 }
 
@@ -72,25 +68,25 @@ export async function DELETE(
   { params }: { params: Promise<{ taskId: string }> }
 ) {
   try {
-    const { taskId } = await params;
+    const { taskId } = await params
 
     // Delete task (prep steps will cascade delete due to foreign key)
     const { error } = await supabase
       .from('tasks')
       .delete()
-      .eq('id', taskId);
+      .eq('id', taskId)
 
     if (error) {
-      throw new Error(`Failed to delete task: ${error.message}`);
+      throw new Error(`Failed to delete task: ${error.message}`)
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Error deleting task:', error);
+    console.error('Error deleting task:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unknown error occurred' },
       { status: 500 }
-    );
+    )
   }
 }

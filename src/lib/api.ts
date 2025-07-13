@@ -1,8 +1,8 @@
 import type { Task, CreateTaskRequest, UpdateTaskRequest, UserStats, ApiResponse } from '@/types';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? '/api/python' 
-  : 'http://localhost:3000/api/python';
+  ? '/api' 
+  : 'http://localhost:3000/api';
 
 class ApiClient {
   private async request<T>(
@@ -49,14 +49,14 @@ class ApiClient {
   }
 
   async updateTask(taskId: string, updates: Omit<UpdateTaskRequest, 'id'>): Promise<ApiResponse<{ success: boolean }>> {
-    return this.request<{ success: boolean }>(`/tasks/task/${taskId}`, {
+    return this.request<{ success: boolean }>(`/tasks/${taskId}`, {
       method: 'PUT',
-      body: JSON.stringify({ id: taskId, ...updates }),
+      body: JSON.stringify(updates),
     });
   }
 
   async deleteTask(taskId: string): Promise<ApiResponse<{ success: boolean }>> {
-    return this.request<{ success: boolean }>(`/tasks/task/${taskId}`, {
+    return this.request<{ success: boolean }>(`/tasks/${taskId}`, {
       method: 'DELETE',
     });
   }
