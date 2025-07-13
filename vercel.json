@@ -1,13 +1,3 @@
 {
-  "functions": {
-    "api/python/main.py": {
-      "runtime": "python3.9"
-    }
-  },
-  "routes": [
-    {
-      "src": "/api/python/(.*)",
-      "dest": "/api/python/main.py"
-    }
-  ]
+  "framework": "nextjs"
 }
